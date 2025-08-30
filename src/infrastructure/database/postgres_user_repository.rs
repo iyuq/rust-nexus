@@ -48,6 +48,14 @@ impl UserRepositoryPort for PostgresUserRepository {
         .await
         .map_err(|e| {
             tracing::error!("Failed to save user: {}", e);
+            
+            // Check for unique constraint violation (duplicate email)
+            if let sqlx::Error::Database(db_err) = &e {
+                if db_err.constraint() == Some("users_email_key") {
+                    return UserError::EmailAlreadyExists;
+                }
+            }
+            
             UserError::InvalidEmail("Database error".to_string())
         })?;
 

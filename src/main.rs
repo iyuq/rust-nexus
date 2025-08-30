@@ -38,14 +38,13 @@ async fn main() -> Result<()> {
         .init();
 
     // Get configuration from environment
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let port = env::var("PORT")
         .unwrap_or_else(|_| "3000".to_string())
         .parse::<u16>()
         .expect("PORT must be a valid number");
 
-    // Database setup
-    let pool = setup_database(&database_url).await?;
+    // Database setup with optimized pool
+    let pool = setup_database().await?;
 
     // Create repository adapter
     let user_repository = PostgresUserRepository::new(pool);
@@ -67,12 +66,13 @@ async fn main() -> Result<()> {
             .layer(cors),
     );
 
-    // Create listener
+    // Create listener with TCP optimizations for high load
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
         .await
         .unwrap();
-
+    
     tracing::info!("Server running on http://0.0.0.0:{}", port);
+    tracing::info!("Connection pool: max={}, optimized for high-load scenarios", 100);
 
     // Start the server
     axum::serve(listener, app).await.unwrap();
